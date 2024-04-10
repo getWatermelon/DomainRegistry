@@ -6,7 +6,7 @@ describe("DomainRegistry", function () {
     const MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT = 100;
     const MAX_DOMAIN_LENGTH = 32;
     const PWEI_DECIMAL_PLACES_NUMBER = 15;
-    const registrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER); // 15 Finney
+    const registrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER);
 
     let domainRegistry
     let owner, addr1, addr2;
@@ -127,7 +127,7 @@ describe("DomainRegistry", function () {
     describe("changeRegistrationFee", function () {
         it("Should change the registration fee by the owner", async function () {
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
-            const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
+            const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER);
 
             await domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee);
 
@@ -136,7 +136,7 @@ describe("DomainRegistry", function () {
 
         it("Should fail if not called by the owner", async function () {
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
-            const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
+            const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER);
 
             await expect(domainRegistry.connect(addr1).changeRegistrationFee(newRegistrationFee))
                 .to.be.revertedWithCustomError(domainRegistry, "OnlyOwnerCanCall");
@@ -144,7 +144,7 @@ describe("DomainRegistry", function () {
 
         it("Should fail if fee is less then 0", async function () {
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
-            const newRegistrationFee = ethers.parseUnits("0", PWEI_DECIMAL_PLACES_NUMBER); // 0 Finney
+            const newRegistrationFee = ethers.parseUnits("0", PWEI_DECIMAL_PLACES_NUMBER);
 
             await expect(domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee))
                 .to.be.revertedWithCustomError(domainRegistry, "RegistrationFeeMustBeGreaterThanZero");
@@ -152,7 +152,7 @@ describe("DomainRegistry", function () {
 
         it("Should fail if fee is equal to current", async function () {
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
-            const newRegistrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
+            const newRegistrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER);
 
             await expect(domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee))
                 .to.be.revertedWithCustomError(domainRegistry, "NewRegistrationFeeMustDifferFromCurrent");
@@ -245,10 +245,10 @@ describe("DomainRegistry", function () {
 
         it("RegistrationFeeChanged", async function () {
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
-            let newRegistrationFee = ethers.parseUnits("12", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
+            let newRegistrationFee = ethers.parseUnits("12", PWEI_DECIMAL_PLACES_NUMBER);
             await domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee);
 
-            newRegistrationFee = ethers.parseUnits("14", PWEI_DECIMAL_PLACES_NUMBER); // 11 Finney
+            newRegistrationFee = ethers.parseUnits("14", PWEI_DECIMAL_PLACES_NUMBER);
             await domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee);
 
             const filter = domainRegistry.filters.RegistrationFeeChanged();
