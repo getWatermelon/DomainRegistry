@@ -1,26 +1,24 @@
 const { ethers } = require("hardhat");
 const { expect } = require("chai");
-const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
 
 describe("DomainRegistry", function () {
-    async function deployDomainRegistryFixture() {
-        const PWEI_DECIMAL_PLACES_NUMBER = 15;
-        const registrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER); // 15 Finney
+    const MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT = 100;
+    const MAX_DOMAIN_LENGTH = 32;
+    const PWEI_DECIMAL_PLACES_NUMBER = 15;
+    const registrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER); // 15 Finney
 
-        const [owner, addr1, addr2] = await ethers.getSigners();
+    let domainRegistry
+    let owner, addr1, addr2;
+
+    beforeEach(async function () {
         const DomainRegistry = await ethers.getContractFactory("DomainRegistry");
-
-        const domainRegistry = await DomainRegistry.deploy(registrationFee);
-        await domainRegistry.waitForDeployment();
-
-        return { domainRegistry, registrationFee, owner, addr1, addr2 };
-    }
+        [owner, addr1, addr2] = await ethers.getSigners();
+        domainRegistry = await DomainRegistry.deploy(registrationFee);
+    });
 
     describe("Deployment", function () {
         it("Should set the right owner and registration fee", async function () {
-            const { domainRegistry, registrationFee, owner } = await loadFixture(deployDomainRegistryFixture);
-
             expect(await domainRegistry.owner()).to.equal(owner.address);
             expect(await domainRegistry.registrationFee()).to.equal(registrationFee);
         });
@@ -28,16 +26,15 @@ describe("DomainRegistry", function () {
 
     describe("registerDomain", function () {
         it("Should register a domain", async function () {
-            const { domainRegistry, registrationFee, addr1 } = await loadFixture(deployDomainRegistryFixture);
             const domainName = "com";
 
             await domainRegistry.connect(addr1).registerDomain(domainName, { value: registrationFee });
 
-            expect(await domainRegistry.domainToController(domainName)).to.equal(addr1.address);
+            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address, 0, 10);
+            expect(addr1ControllerDomains[0]).to.be.equal(domainName);
         });
 
         it("Should take right fee amount", async function () {
-            const { domainRegistry, registrationFee, addr1 } = await loadFixture(deployDomainRegistryFixture);
             const domainName = "com";
 
             const initialAccountBalance = await ethers.provider.getBalance(addr1.address)
@@ -52,41 +49,48 @@ describe("DomainRegistry", function () {
         });
 
         it("Should can register multiple domains", async function () {
-            const { domainRegistry, registrationFee, addr1 } = await loadFixture(deployDomainRegistryFixture);
             const firstDomainName = "com";
             const secondDomainName = "org";
 
             await domainRegistry.connect(addr1).registerDomain(firstDomainName, { value: registrationFee });
             await domainRegistry.connect(addr1).registerDomain(secondDomainName, { value: registrationFee });
 
-            expect(await domainRegistry.domainToController(firstDomainName)).to.equal(addr1.address);
-            expect(await domainRegistry.domainToController(secondDomainName)).to.equal(addr1.address);
+            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address, 0, 10);
+            expect(addr1ControllerDomains[0]).to.be.equal(firstDomainName);
+            expect(addr1ControllerDomains[1]).to.be.equal(secondDomainName);
         });
 
         it("Should fail for incorrect fee", async function () {
-            const { domainRegistry, registrationFee, addr1 } = await loadFixture(deployDomainRegistryFixture);
             const domain = "com";
 
             const incorrectFee = registrationFee - 1n;
 
             await expect(domainRegistry.connect(addr1).registerDomain(domain, { value: incorrectFee }))
-                .to.be.revertedWith("Please submit the correct registration fee");
+                .to.be.revertedWithCustomError(domainRegistry, "IncorrectRegistrationFee")
+                .withArgs(registrationFee);
+        });
+
+        it("Should fail if domain name is to long", async function () {
+            const domainName = "com12345678910111213141516171819202122";
+
+            await expect(domainRegistry.connect(addr2).registerDomain(domainName, { value: registrationFee }))
+                .to.be.revertedWithCustomError(domainRegistry, "ExceededDomainMaxLength")
+                .withArgs(MAX_DOMAIN_LENGTH);
         });
 
         it("Should not allow register a domain that is already registered", async function () {
-            const { domainRegistry, registrationFee, addr1, addr2 } = await loadFixture(deployDomainRegistryFixture);
             const domainName = "com";
 
             await domainRegistry.connect(addr1).registerDomain(domainName, { value: registrationFee });
 
             await expect(domainRegistry.connect(addr2).registerDomain(domainName, { value: registrationFee }))
-                 .to.be.revertedWith("Domain is already registered");
+                 .to.be.revertedWithCustomError(domainRegistry, "DomainAlreadyRegistered")
+                .withArgs(domainName);
         });
     });
 
     describe("getControllerDomains", function () {
         it("Should get owner domains", async function () {
-            const { domainRegistry, registrationFee, owner, addr1, addr2 } = await loadFixture(deployDomainRegistryFixture);
             const firstDomainName = "com";
             const secondDomainName = "org";
             const thirdDomainName = "ua";
@@ -95,29 +99,33 @@ describe("DomainRegistry", function () {
             await domainRegistry.connect(addr1).registerDomain(secondDomainName, { value: registrationFee });
             await domainRegistry.connect(addr2).registerDomain(thirdDomainName, { value: registrationFee });
 
-            const ownerControllerDomains = await domainRegistry.getControllerDomains(owner.address);
-            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address);
-            const addr2ControllerDomains = await domainRegistry.getControllerDomains(addr2.address);
+            const ownerControllerDomains = await domainRegistry.getControllerDomains(owner.address, 0, 10);
+            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address, 0, 20);
+            const addr2ControllerDomains = await domainRegistry.getControllerDomains(addr2.address, 0, 100);
 
             expect(ownerControllerDomains.length).to.be.equal(0);
             expect(addr1ControllerDomains.length).to.be.equal(2);
             expect(addr2ControllerDomains.length).to.be.equal(1);
 
-            expect(addr1ControllerDomains[0].name).to.be.equal(firstDomainName);
-            expect(addr1ControllerDomains[0].controller).to.be.equal(addr1.address);
+            expect(addr1ControllerDomains[0]).to.be.equal(firstDomainName);
 
-            expect(addr1ControllerDomains[1].name).to.be.equal(secondDomainName);
-            expect(addr1ControllerDomains[1].controller).to.be.equal(addr1.address);
+            expect(addr1ControllerDomains[1]).to.be.equal(secondDomainName);
 
-            expect(addr2ControllerDomains[0].name).to.be.equal(thirdDomainName);
-            expect(addr2ControllerDomains[0].controller).to.be.equal(addr2.address);
+            expect(addr2ControllerDomains[0]).to.be.equal(thirdDomainName);
+        });
+
+        it("Should fail on exceed search limit", async function () {
+            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
+
+            await expect(domainRegistry.getControllerDomains(addr1.address, 0, 101))
+                .to.be.revertedWithCustomError(domainRegistry, "ExceededControllerDomainsSearchLimit")
+                .withArgs(MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT)
+
         });
     });
 
     describe("changeRegistrationFee", function () {
         it("Should change the registration fee by the owner", async function () {
-            const { domainRegistry, owner } = await loadFixture(deployDomainRegistryFixture);
-
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
             const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
 
@@ -127,20 +135,32 @@ describe("DomainRegistry", function () {
         });
 
         it("Should fail if not called by the owner", async function () {
-            const { domainRegistry, addr1 } = await loadFixture(deployDomainRegistryFixture);
-
             const PWEI_DECIMAL_PLACES_NUMBER = 15;
             const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
 
             await expect(domainRegistry.connect(addr1).changeRegistrationFee(newRegistrationFee))
-                .to.be.revertedWith("Only the owner can call this function");
+                .to.be.revertedWithCustomError(domainRegistry, "OnlyOwnerCanCall");
+        });
+
+        it("Should fail if fee is less then 0", async function () {
+            const PWEI_DECIMAL_PLACES_NUMBER = 15;
+            const newRegistrationFee = ethers.parseUnits("0", PWEI_DECIMAL_PLACES_NUMBER); // 0 Finney
+
+            await expect(domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee))
+                .to.be.revertedWithCustomError(domainRegistry, "RegistrationFeeMustBeGreaterThanZero");
+        });
+
+        it("Should fail if fee is equal to current", async function () {
+            const PWEI_DECIMAL_PLACES_NUMBER = 15;
+            const newRegistrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
+
+            await expect(domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee))
+                .to.be.revertedWithCustomError(domainRegistry, "NewRegistrationFeeMustDifferFromCurrent");
         });
     });
 
     describe("withdrawFees", function () {
         it("Should allow the owner to withdraw fees", async function () {
-            const { domainRegistry, registrationFee, owner, addr1, addr2 } = await loadFixture(deployDomainRegistryFixture);
-
             await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
             await domainRegistry.connect(addr1).registerDomain("org", { value: registrationFee });
             await domainRegistry.connect(addr2).registerDomain("ua", { value: registrationFee });
@@ -158,38 +178,37 @@ describe("DomainRegistry", function () {
         });
 
         it("Should fail if not called by the owner", async function () {
-            const { domainRegistry, registrationFee, addr1 } = await loadFixture(deployDomainRegistryFixture);
-
             await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
 
             await expect(domainRegistry.connect(addr1).withdrawFees())
-                .to.be.revertedWith("Only the owner can call this function");
+                .to.be.revertedWithCustomError(domainRegistry, "OnlyOwnerCanCall");
         });
     });
 
-    describe("DomainRegistered", function () {
-        it("", async function () {
-            function sortDomainsByRegistrationDate(events) {
-                return events.sort((a, b) => a.args.registeredAt - b.args.registeredAt);
-            }
+    describe("Metrics", function () {
+        function sortDomainsByRegistrationDate(events) {
+            return events.sort((a, b) => a.args.registeredAt - b.args.registeredAt);
+        }
 
-            async function getControllerRegisteredDomains(controllerAddress) {
-                const filter = domainRegistry.filters.DomainRegistered(null, controllerAddress)
+        async function getControllerRegisteredDomains(controllerAddress) {
+            const filter = domainRegistry.filters.DomainRegistered(null, controllerAddress)
 
-                let events = await domainRegistry.queryFilter(filter);
-                events = sortDomainsByRegistrationDate(events);
+            let events = await domainRegistry.queryFilter(filter);
+            events = sortDomainsByRegistrationDate(events);
 
-                return events;
-            }
+            return events;
+        }
 
-            function logDomainRegisteredEvents(events) {
-                events.map(event => {
-                    console.log("event.args: ", event.args);
-                });
-            }
+        async function logDomainRegisteredEvents(events) {
+            return await Promise.all(events.map(async (event) => {
+                const block = await ethers.provider.getBlock(event.blockNumber);
+                console.log("block.timestamp: ", block.timestamp);
+                console.log("event.args: ", event.args);
+            }));
+        }
 
-            const { domainRegistry, registrationFee, owner, addr1, addr2 } = await loadFixture(deployDomainRegistryFixture);
 
+        it("DomainRegistered", async function () {
             await domainRegistry.connect(owner).registerDomain("com", { value: registrationFee });
             await domainRegistry.connect(addr1).registerDomain("org", { value: registrationFee });
             await domainRegistry.connect(addr1).registerDomain("ua", { value: registrationFee });
@@ -210,7 +229,7 @@ describe("DomainRegistry", function () {
             console.log("All registered domains filter by date:");
 
             events = sortDomainsByRegistrationDate(events)
-            logDomainRegisteredEvents(events);
+            await logDomainRegisteredEvents(events);
 
             console.log("Registered domain by a concrete controllers filter by date: ");
 
@@ -219,9 +238,25 @@ describe("DomainRegistry", function () {
             controllers.map(async controller => {
                 const events = await getControllerRegisteredDomains(controller.address);
                 console.log("Controller address: ", controller.address);
-                logDomainRegisteredEvents(events);
+                await logDomainRegisteredEvents(events);
             });
 
+        });
+
+        it("RegistrationFeeChanged", async function () {
+            const PWEI_DECIMAL_PLACES_NUMBER = 15;
+            let newRegistrationFee = ethers.parseUnits("12", PWEI_DECIMAL_PLACES_NUMBER); // 10 Finney
+            await domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee);
+
+            newRegistrationFee = ethers.parseUnits("14", PWEI_DECIMAL_PLACES_NUMBER); // 11 Finney
+            await domainRegistry.connect(owner).changeRegistrationFee(newRegistrationFee);
+
+            const filter = domainRegistry.filters.RegistrationFeeChanged();
+
+            let events = await domainRegistry.queryFilter(filter);
+
+            console.log("All changed fee events:");
+            await logDomainRegisteredEvents(events);
         });
     });
 });

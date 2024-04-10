@@ -10,7 +10,7 @@ const REPORT_GAS = process.env.REPORT_GAS || false;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.20",
+  solidity: "0.8.24",
   etherscan: {
     apiKey: ETHERSCAN_API_KEY
   },
