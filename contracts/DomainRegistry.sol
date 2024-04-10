@@ -2,28 +2,28 @@
 pragma solidity ^0.8.24;
 
 /// @dev Error thrown when a function caller is not the owner
-    error OnlyOwnerCanCall();
+error OnlyOwnerCanCall();
 
 /// @dev Error thrown when trying to register a domain that is already registered
-    error DomainAlreadyRegistered(string domain);
+error DomainAlreadyRegistered(string domain);
 
 /// @dev Error thrown when the registration fee is set to zero or less
-    error RegistrationFeeMustBeGreaterThanZero();
+error RegistrationFeeMustBeGreaterThanZero();
 
 /// @dev Error thrown when the new registration fee is the same as the current fee
-    error NewRegistrationFeeMustDifferFromCurrent();
+error NewRegistrationFeeMustDifferFromCurrent();
 
 /// @dev Error thrown when the provided registration fee does not match the required fee
-    error IncorrectRegistrationFee(uint256 requiredFee);
+error IncorrectRegistrationFee(uint256 requiredFee);
 
 /// @dev Error thrown when withdrawing fees fails
-    error FailedToWithdrawFees();
+error FailedToWithdrawFees();
 
 /// @dev Error thrown when the domain length exceeds the maximum allowed length
-    error ExceededDomainMaxLength(uint8 maxLength);
+error ExceededDomainMaxLength(uint8 maxLength);
 
 /// @dev Error thrown when the limit for searching controller domains exceeds the maximum allowed limit
-    error ExceededControllerDomainsSearchLimit(uint8 maxLimit);
+error ExceededControllerDomainsSearchLimit(uint8 maxLimit);
 
 /**
 * @title Domain Registry Contract
