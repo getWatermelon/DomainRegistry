@@ -60,6 +60,18 @@ contract DomainRegistry {
     }
 
     /**
+    * @notice Retrieves the number of domains controlled by a specific address (controller)
+    * @param _controllerAddress The address of the controller to query domains count for
+    * @return registeredDomainsCount The number of domains registered by the controller
+    */
+    function getControllerDomainsNumber(address _controllerAddress) external view returns (uint256 registeredDomainsCount) {
+        string[] memory registeredDomains = controllerToDomains[_controllerAddress];
+        uint256 registeredDomainsCount = registeredDomains.length;
+
+        return registeredDomainsCount;
+    }
+
+    /**
     * @notice Retrieves a subset of domains controlled by a specific address
     * @param _controllerAddress The address of the controller to query domains for
     * @param _offset The starting index for domain retrieval

@@ -81,6 +81,26 @@ describe("DomainRegistry", function () {
         });
     });
 
+    describe("getControllerDomainsNumber", function () {
+        it("Should get owner domains number", async function () {
+            const firstDomainName = "com";
+            const secondDomainName = "org";
+            const thirdDomainName = "ua";
+
+            await domainRegistry.connect(addr1).registerDomain(firstDomainName, { value: registrationFee });
+            await domainRegistry.connect(addr1).registerDomain(secondDomainName, { value: registrationFee });
+            await domainRegistry.connect(addr2).registerDomain(thirdDomainName, { value: registrationFee });
+
+            const ownerControllerDomainsNumber = await domainRegistry.getControllerDomainsNumber(owner.address);
+            const addr1ControllerDomainsNumber = await domainRegistry.getControllerDomainsNumber(addr1.address);
+            const addr2ControllerDomainsNumber = await domainRegistry.getControllerDomainsNumber(addr2.address);
+
+            expect(ownerControllerDomainsNumber).to.be.equal(0);
+            expect(addr1ControllerDomainsNumber).to.be.equal(2);
+            expect(addr2ControllerDomainsNumber).to.be.equal(1);
+        });
+    });
+
     describe("getControllerDomains", function () {
         it("Should get owner domains", async function () {
             const firstDomainName = "com";
