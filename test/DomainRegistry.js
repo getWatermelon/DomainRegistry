@@ -105,15 +105,6 @@ describe("DomainRegistry", function () {
 
             expect(addr2ControllerDomains[0]).to.be.equal(thirdDomainName);
         });
-
-        it("Should fail on exceed search limit", async function () {
-            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
-
-            await expect(domainRegistry.getControllerDomains(addr1.address, 0, 101))
-                .to.be.revertedWithCustomError(domainRegistry, "ExceededControllerDomainsSearchLimit")
-                .withArgs(MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT)
-
-        });
     });
 
     describe("changeRegistrationFee", function () {

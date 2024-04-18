@@ -19,18 +19,12 @@ error IncorrectRegistrationFee(uint256 requiredFee);
 /// @dev Error thrown when withdrawing fees fails
 error FailedToWithdrawFees();
 
-/// @dev Error thrown when the limit for searching controller domains exceeds the maximum allowed limit
-error ExceededControllerDomainsSearchLimit(uint8 maxLimit);
-
 /**
 * @title Domain Registry Contract
 * @notice This contract allows users to register and manage top-level domain names
 * @author Developed by Ivan Myasoyedov
 */
 contract DomainRegistry {
-//    uint8 public constant MAX_DOMAIN_LENGTH = 32;
-    uint8 public constant MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT = 100;
-
     /// @notice Address of the contract owner
     address public owner;
 
@@ -77,10 +71,6 @@ contract DomainRegistry {
         uint256 _offset,
         uint256 _limit
     ) external view returns (string[] memory domains) {
-        if (_limit > MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT) {
-            revert ExceededControllerDomainsSearchLimit(MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT);
-        }
-
         string[] memory registeredDomains = controllerToDomains[_controllerAddress];
         uint256 registeredCount = registeredDomains.length;
 
