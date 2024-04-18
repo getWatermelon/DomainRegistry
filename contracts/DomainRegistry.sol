@@ -19,9 +19,6 @@ error IncorrectRegistrationFee(uint256 requiredFee);
 /// @dev Error thrown when withdrawing fees fails
 error FailedToWithdrawFees();
 
-/// @dev Error thrown when the domain length exceeds the maximum allowed length
-error ExceededDomainMaxLength(uint8 maxLength);
-
 /// @dev Error thrown when the limit for searching controller domains exceeds the maximum allowed limit
 error ExceededControllerDomainsSearchLimit(uint8 maxLimit);
 
@@ -31,7 +28,7 @@ error ExceededControllerDomainsSearchLimit(uint8 maxLimit);
 * @author Developed by Ivan Myasoyedov
 */
 contract DomainRegistry {
-    uint8 public constant MAX_DOMAIN_LENGTH = 32;
+//    uint8 public constant MAX_DOMAIN_LENGTH = 32;
     uint8 public constant MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT = 100;
 
     /// @notice Address of the contract owner
@@ -109,7 +106,6 @@ contract DomainRegistry {
     function registerDomain(string calldata _domain) external payable {
         if (msg.value != registrationFee) revert IncorrectRegistrationFee(registrationFee);
         if (registeredDomains[_domain]) revert DomainAlreadyRegistered(_domain);
-        if (bytes(_domain).length > MAX_DOMAIN_LENGTH) revert ExceededDomainMaxLength(MAX_DOMAIN_LENGTH);
 
         registeredDomains[_domain] = true;
         controllerToDomains[msg.sender].push(_domain);

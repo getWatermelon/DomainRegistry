@@ -70,14 +70,6 @@ describe("DomainRegistry", function () {
                 .withArgs(registrationFee);
         });
 
-        it("Should fail if domain name is to long", async function () {
-            const domainName = "com12345678910111213141516171819202122";
-
-            await expect(domainRegistry.connect(addr2).registerDomain(domainName, { value: registrationFee }))
-                .to.be.revertedWithCustomError(domainRegistry, "ExceededDomainMaxLength")
-                .withArgs(MAX_DOMAIN_LENGTH);
-        });
-
         it("Should not allow register a domain that is already registered", async function () {
             const domainName = "com";
 
