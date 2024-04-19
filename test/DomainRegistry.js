@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const { expect } = require("chai");
 
 
@@ -12,7 +12,7 @@ describe("DomainRegistry", function () {
     beforeEach(async function () {
         const DomainRegistry = await ethers.getContractFactory("DomainRegistry");
         [owner, addr1, addr2] = await ethers.getSigners();
-        domainRegistry = await DomainRegistry.deploy(registrationFee);
+        domainRegistry = await upgrades.deployProxy(DomainRegistry, [owner.address, registrationFee]);
     });
 
     describe("Deployment", function () {
@@ -57,6 +57,7 @@ describe("DomainRegistry", function () {
 
             expect(firstDomainNameHolderAddress).to.be.equal(addr1.address);
             expect(secondDomainNameHolderAddress).to.be.equal(addr1.address);
+
         });
 
         it("Should fail for incorrect fee", async function () {
@@ -75,7 +76,7 @@ describe("DomainRegistry", function () {
             await domainRegistry.connect(addr1).registerDomain(domainName, { value: registrationFee });
 
             await expect(domainRegistry.connect(addr2).registerDomain(domainName, { value: registrationFee }))
-                 .to.be.revertedWithCustomError(domainRegistry, "DomainAlreadyRegistered")
+                .to.be.revertedWithCustomError(domainRegistry, "DomainAlreadyRegistered")
                 .withArgs(domainName);
         });
     });
@@ -95,7 +96,7 @@ describe("DomainRegistry", function () {
             const newRegistrationFee = ethers.parseUnits("10", PWEI_DECIMAL_PLACES_NUMBER);
 
             await expect(domainRegistry.connect(addr1).changeRegistrationFee(newRegistrationFee))
-                .to.be.revertedWithCustomError(domainRegistry, "OnlyOwnerCanCall");
+                .to.be.revertedWithCustomError(domainRegistry, "OwnableUnauthorizedAccount");
         });
 
         it("Should fail if fee is less then 0", async function () {
@@ -137,7 +138,7 @@ describe("DomainRegistry", function () {
             await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
 
             await expect(domainRegistry.connect(addr1).withdrawFees())
-                .to.be.revertedWithCustomError(domainRegistry, "OnlyOwnerCanCall");
+                .to.be.revertedWithCustomError(domainRegistry, "OwnableUnauthorizedAccount");
         });
     });
 

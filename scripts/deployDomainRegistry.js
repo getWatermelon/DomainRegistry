@@ -1,16 +1,16 @@
-const hre = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 
 const PWEI_DECIMAL_PLACES = 15;
 
 async function main() {
-    const [deployer] = await hre.ethers.getSigners();
+    const [deployer] = await ethers.getSigners();
     const deployerAddress = await deployer.getAddress()
     console.log("Deploying contracts with the account:", deployerAddress);
 
-    const registrationFeeAmount = hre.ethers.parseUnits('15', PWEI_DECIMAL_PLACES)
-    const DomainRegistry = await hre.ethers.getContractFactory("DomainRegistry");
+    const registrationFeeAmount = ethers.parseUnits('15', PWEI_DECIMAL_PLACES)
+    const DomainRegistry = await ethers.getContractFactory("DomainRegistry");
 
-    const contract = await DomainRegistry.deploy(registrationFeeAmount);
+    const contract = await upgrades.deployProxy(DomainRegistry, [deployer.address, registrationFeeAmount]);
     await contract.waitForDeployment();
 
     const contractAddress = await contract.getAddress();
