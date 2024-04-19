@@ -31,11 +31,8 @@ contract DomainRegistry {
     /// @notice Fee required to register a domain
     uint256 public registrationFee;
 
-    /// @dev Stores whether a domain is registered
-    mapping(string => bool) public registeredDomains;
-
-    /// @dev Mapping from controller address to their registered domains
-    mapping(address => string[]) public controllerToDomains;
+    /// @dev Mapping from domain name to its holder address
+    mapping(string => address payable) public domainToHolder;
 
     /// @notice Emitted when a new domain is registered
     event DomainRegistered(string domain, address indexed controller);
@@ -60,44 +57,12 @@ contract DomainRegistry {
     }
 
     /**
-    * @notice Retrieves the number of domains controlled by a specific address (controller)
-    * @param _controllerAddress The address of the controller to query domains count for
-    * @return registeredDomainsCount The number of domains registered by the controller
+    * @notice Get the holders of a domain.
+    * @param _domain The domain to retrieve the holder for.
+    * @return The address of the holder of the given domain.
     */
-    function getControllerDomainsNumber(address _controllerAddress) external view returns (uint256 registeredDomainsCount) {
-        string[] memory registeredDomains = controllerToDomains[_controllerAddress];
-        uint256 registeredDomainsCount = registeredDomains.length;
-
-        return registeredDomainsCount;
-    }
-
-    /**
-    * @notice Retrieves a subset of domains controlled by a specific address
-    * @param _controllerAddress The address of the controller to query domains for
-    * @param _offset The starting index for domain retrieval
-    * @param _limit The maximum number of domains to retrieve
-    * @return domains A subset of domain names controlled by `_controllerAddress`
-    */
-    function getControllerDomains(
-        address _controllerAddress,
-        uint256 _offset,
-        uint256 _limit
-    ) external view returns (string[] memory domains) {
-        string[] memory registeredDomains = controllerToDomains[_controllerAddress];
-        uint256 registeredCount = registeredDomains.length;
-
-        if (_offset >= registeredCount) {
-            return new string[](0);
-        }
-
-        uint256 resultSize = (registeredCount - _offset > _limit) ? _limit : registeredCount - _offset;
-        string[] memory resultDomains = new string[](resultSize);
-
-        for (uint256 i = 0; i < resultSize; ++i) {
-            resultDomains[i] = registeredDomains[_offset + i];
-        }
-
-        return resultDomains;
+    function getDomainHolder(string calldata _domain) external view returns (address) {
+        return domainToHolder[_domain];
     }
 
     /**
@@ -107,10 +72,9 @@ contract DomainRegistry {
     */
     function registerDomain(string calldata _domain) external payable {
         if (msg.value != registrationFee) revert IncorrectRegistrationFee(registrationFee);
-        if (registeredDomains[_domain]) revert DomainAlreadyRegistered(_domain);
+        if (domainToHolder[_domain] != address(0x0)) revert DomainAlreadyRegistered(_domain);
 
-        registeredDomains[_domain] = true;
-        controllerToDomains[msg.sender].push(_domain);
+        domainToHolder[_domain] = payable(msg.sender);
 
         emit DomainRegistered(_domain, msg.sender);
     }

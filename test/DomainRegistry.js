@@ -3,8 +3,6 @@ const { expect } = require("chai");
 
 
 describe("DomainRegistry", function () {
-    const MAX_CONTROLLER_DOMAINS_SEARCH_LIMIT = 100;
-    const MAX_DOMAIN_LENGTH = 32;
     const PWEI_DECIMAL_PLACES_NUMBER = 15;
     const registrationFee = ethers.parseUnits("15", PWEI_DECIMAL_PLACES_NUMBER);
 
@@ -27,11 +25,10 @@ describe("DomainRegistry", function () {
     describe("registerDomain", function () {
         it("Should register a domain", async function () {
             const domainName = "com";
-
             await domainRegistry.connect(addr1).registerDomain(domainName, { value: registrationFee });
+            const domainHolderAddress = await domainRegistry.getDomainHolder(domainName);
 
-            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address, 0, 10);
-            expect(addr1ControllerDomains[0]).to.be.equal(domainName);
+            expect(domainHolderAddress).to.be.equal(addr1.address);
         });
 
         it("Should take right fee amount", async function () {
@@ -55,9 +52,11 @@ describe("DomainRegistry", function () {
             await domainRegistry.connect(addr1).registerDomain(firstDomainName, { value: registrationFee });
             await domainRegistry.connect(addr1).registerDomain(secondDomainName, { value: registrationFee });
 
-            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address, 0, 10);
-            expect(addr1ControllerDomains[0]).to.be.equal(firstDomainName);
-            expect(addr1ControllerDomains[1]).to.be.equal(secondDomainName);
+            const firstDomainNameHolderAddress = await domainRegistry.getDomainHolder(firstDomainName);
+            const secondDomainNameHolderAddress = await domainRegistry.getDomainHolder(secondDomainName);
+
+            expect(firstDomainNameHolderAddress).to.be.equal(addr1.address);
+            expect(secondDomainNameHolderAddress).to.be.equal(addr1.address);
         });
 
         it("Should fail for incorrect fee", async function () {
@@ -78,52 +77,6 @@ describe("DomainRegistry", function () {
             await expect(domainRegistry.connect(addr2).registerDomain(domainName, { value: registrationFee }))
                  .to.be.revertedWithCustomError(domainRegistry, "DomainAlreadyRegistered")
                 .withArgs(domainName);
-        });
-    });
-
-    describe("getControllerDomainsNumber", function () {
-        it("Should get owner domains number", async function () {
-            const firstDomainName = "com";
-            const secondDomainName = "org";
-            const thirdDomainName = "ua";
-
-            await domainRegistry.connect(addr1).registerDomain(firstDomainName, { value: registrationFee });
-            await domainRegistry.connect(addr1).registerDomain(secondDomainName, { value: registrationFee });
-            await domainRegistry.connect(addr2).registerDomain(thirdDomainName, { value: registrationFee });
-
-            const ownerControllerDomainsNumber = await domainRegistry.getControllerDomainsNumber(owner.address);
-            const addr1ControllerDomainsNumber = await domainRegistry.getControllerDomainsNumber(addr1.address);
-            const addr2ControllerDomainsNumber = await domainRegistry.getControllerDomainsNumber(addr2.address);
-
-            expect(ownerControllerDomainsNumber).to.be.equal(0);
-            expect(addr1ControllerDomainsNumber).to.be.equal(2);
-            expect(addr2ControllerDomainsNumber).to.be.equal(1);
-        });
-    });
-
-    describe("getControllerDomains", function () {
-        it("Should get owner domains", async function () {
-            const firstDomainName = "com";
-            const secondDomainName = "org";
-            const thirdDomainName = "ua";
-
-            await domainRegistry.connect(addr1).registerDomain(firstDomainName, { value: registrationFee });
-            await domainRegistry.connect(addr1).registerDomain(secondDomainName, { value: registrationFee });
-            await domainRegistry.connect(addr2).registerDomain(thirdDomainName, { value: registrationFee });
-
-            const ownerControllerDomains = await domainRegistry.getControllerDomains(owner.address, 0, 10);
-            const addr1ControllerDomains = await domainRegistry.getControllerDomains(addr1.address, 0, 20);
-            const addr2ControllerDomains = await domainRegistry.getControllerDomains(addr2.address, 0, 100);
-
-            expect(ownerControllerDomains.length).to.be.equal(0);
-            expect(addr1ControllerDomains.length).to.be.equal(2);
-            expect(addr2ControllerDomains.length).to.be.equal(1);
-
-            expect(addr1ControllerDomains[0]).to.be.equal(firstDomainName);
-
-            expect(addr1ControllerDomains[1]).to.be.equal(secondDomainName);
-
-            expect(addr2ControllerDomains[0]).to.be.equal(thirdDomainName);
         });
     });
 
