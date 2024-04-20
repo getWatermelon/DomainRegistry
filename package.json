@@ -1,0 +1,20 @@
+{
+  "name": "hardhat-project",
+  "version": "1.0.0",
+  "description": "",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "ethers": "^6.6.5",
+    "hardhat": "^2.17.0"
+  },
+  "scripts": {
+    "hardhat:node": "hardhat node",
+    "hardhat:compile": "hardhat compile",
+    "hardhat:compile:force": "hardhat compile --force",
+    "hardhat:test": "REPORT_GAS=true hardhat test",
+    "hardhat:deploy:domainRegistry": "hardhat run scripts/deployDomainRegistry.js --network localhost",
+    "hardhat:test:domainRegistry": "REPORT_GAS=true hardhat test test/DomainRegistry.js"
+  },
+  "keywords": [],
+  "license": "ISC"
+}
