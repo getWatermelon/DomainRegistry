@@ -32,7 +32,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
     // keccak256(abi.encode(uint256(keccak256("main.DomainRegistry.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DomainRegistryStorageLocation =
-    0xb611e20da8e0f23a29d564e0e10e4725f38cca3e24b5e476e1c2af79291d8a00;
+        0xb611e20da8e0f23a29d564e0e10e4725f38cca3e24b5e476e1c2af79291d8a00;
 
     /**
     * @dev Retrieves the DomainRegistryStorage instance from its specified slot in storage.
@@ -99,7 +99,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     /// @dev Error thrown when a domain holder's withdraw reward fails
     error WithdrawRewardFailed(string domain);
 
-
     /// @notice Ensures that a domain is not already registered before running the function
     modifier availableDomain(string memory _domain) {
         if (isDomainRegistered(_domain))
@@ -115,7 +114,9 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Reinitialize the contract with new owner, registration fee and holder reward
-    function reinitialize(address _owner, uint256 _registrationFee, uint256 _domainHolderReward) public reinitializer(2) {
+    function reinitialize(address _owner, uint256 _registrationFee, uint256 _domainHolderReward)
+    public
+    reinitializer(2) {
         if (_registrationFee <= 0) revert RegistrationFeeMustBeGreaterThanZero();
         if (_domainHolderReward <= 0) revert DomainHolderRewardMustBeGreaterThanZero();
 
@@ -134,12 +135,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     * or when the function that is supposed to receive Ether or data does not exist
     */
     fallback() external payable { }
-
-    /// @notice Checks whether a domain is registered
-    function isDomainRegistered(string memory _domain) public view returns (bool)
-    {
-        return _getDomainRegistryStorage().domainToHolder[_domain] != address(0x0);
-    }
 
     /**
     * @notice Get the holders of a domain.
@@ -248,6 +243,12 @@ contract DomainRegistryV2 is OwnableUpgradeable {
             controller: domainHolder,
             rewardValue: $.domainHolderReward
         });
+    }
+
+    /// @notice Checks whether a domain is registered
+    function isDomainRegistered(string memory _domain) public view returns (bool)
+    {
+        return _getDomainRegistryStorage().domainToHolder[_domain] != address(0x0);
     }
 
     /// @notice Apply rewards to the domain holder
