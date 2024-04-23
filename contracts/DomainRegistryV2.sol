@@ -233,9 +233,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
         if (rewardBalance == 0) revert NothingToWithdraw();
 
-        bool rewardWithdrawn = _transferEtherTo(domainHolder, rewardBalance);
-        if (!rewardWithdrawn) revert WithdrawRewardFailed(_domain);
-
         _resetRewardForDomain(_domain);
 
         emit DomainHolderRewardWithdrawn({
@@ -243,6 +240,9 @@ contract DomainRegistryV2 is OwnableUpgradeable {
             controller: domainHolder,
             rewardValue: $.domainHolderReward
         });
+
+        bool rewardWithdrawn = _transferEtherTo(domainHolder, rewardBalance);
+        if (!rewardWithdrawn) revert WithdrawRewardFailed(_domain);
     }
 
     /// @notice Checks whether a domain is registered
