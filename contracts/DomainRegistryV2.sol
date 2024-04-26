@@ -88,6 +88,9 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     /// @dev Error thrown when a domain holder's withdraw reward fails
     error WithdrawRewardFailed(string domain);
 
+    /// @dev Error thrown when the caller is neither the domain holder or the contract owner
+    error NotDomainHolderOrOwner();
+
     /// @notice Ensures that a domain is not already registered before running the function
     modifier availableDomain(string memory _domain) {
         if (isDomainRegistered(_domain))
@@ -99,6 +102,16 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     modifier onlyRegisteredDomain(string memory _domain) {
         if (!isDomainRegistered(_domain))
             revert DomainWasNotRegistered();
+        _;
+    }
+
+    /// @notice Ensures that a function can only be called by the domain holder or the contract owner.
+    modifier onlyDomainHolderOrOwner(string memory _domain) {
+        address domainHolder = getDomainHolder(_domain);
+
+        if (!(msg.sender == domainHolder || msg.sender == owner())) {
+            revert NotDomainHolderOrOwner();
+        }
         _;
     }
 
@@ -124,16 +137,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     * or when the function that is supposed to receive Ether or data does not exist
     */
     fallback() external payable { }
-
-    /**
-    * @notice Get the holders of a domain.
-    * @param _domain The domain to retrieve the holder for.
-    * @return The address of the holder of the given domain.
-    */
-    function getDomainHolder(string calldata _domain) external view onlyRegisteredDomain(_domain) returns (address) {
-        DomainRegistryStorage storage $ = _getDomainRegistryStorage();
-        return $.domainToHolder[_domain];
-    }
 
     /**
     * @notice Retrieves the fee required to register a domain
@@ -192,7 +195,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Change the reward amount for domain holders
-    function  changeDomainHolderReward(uint256 _newRewardAmount) external onlyOwner {
+    function changeDomainHolderReward(uint256 _newRewardAmount) external onlyOwner {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
         if (_newRewardAmount <= 0) revert DomainHolderRewardMustBeGreaterThanZero();
@@ -214,7 +217,10 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Withdraw rewards from a domain
-    function withdrawRewardForDomain(string memory _domain) external onlyOwner {
+    function withdrawRewardForDomain(string memory _domain)
+    external
+    onlyRegisteredDomain(_domain)
+    onlyDomainHolderOrOwner(_domain) {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
         address payable domainHolder = $.domainToHolder[_domain];
@@ -238,6 +244,16 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     function isDomainRegistered(string memory _domain) public view returns (bool)
     {
         return _getDomainRegistryStorage().domainToHolder[_domain] != address(0x0);
+    }
+
+    /**
+    * @notice Get the holders of a domain.
+    * @param _domain The domain to retrieve the holder for.
+    * @return The address of the holder of the given domain.
+    */
+    function getDomainHolder(string memory _domain) public view onlyRegisteredDomain(_domain) returns (address) {
+        DomainRegistryStorage storage $ = _getDomainRegistryStorage();
+        return $.domainToHolder[_domain];
     }
 
     /// @notice Apply rewards to the domain holder

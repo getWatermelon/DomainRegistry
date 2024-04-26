@@ -102,6 +102,32 @@ describe("DomainRegistryV2", function () {
     });
 
     describe("withdrawRewardForDomain", function () {
+        it("Should de able to withdraw reward by owner", async function () {
+            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
+            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
+
+            expect(await domainRegistry.connect(owner).getDomainRewardAmount("com")).to.be.equal(
+                parentDomainHolderRewardAmount
+            );
+        });
+
+        it("Should de able to withdraw reward by domain holder", async function () {
+            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
+            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
+
+            expect(await domainRegistry.connect(addr1).getDomainRewardAmount("com")).to.be.equal(
+                parentDomainHolderRewardAmount
+            );
+        });
+
+        it("Should fail if not called by the owner or the domain holder", async function () {
+            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
+            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
+
+            await expect(domainRegistry.connect(addr2).withdrawRewardForDomain("com"))
+                .to.be.revertedWithCustomError(domainRegistry, "NotDomainHolderOrOwner");
+        });
+
         it("Should withdraw correct amount of ether to parent domain holder", async function () {
             await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
             await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
@@ -120,14 +146,6 @@ describe("DomainRegistryV2", function () {
                 initialAddr1AccountBalance + parentDomainHolderRewardAmount
             );
             expect(await domainRegistry.connect(owner).getDomainRewardAmount("com")).to.be.equal(0);
-        });
-
-        it("Should fail if not called by the owner", async function () {
-            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
-            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
-
-            await expect(domainRegistry.connect(addr1).withdrawRewardForDomain("com"))
-                .to.be.revertedWithCustomError(domainRegistry, "OwnableUnauthorizedAccount");
         });
 
         it("Should fail if nothing to withdraw", async function () {
