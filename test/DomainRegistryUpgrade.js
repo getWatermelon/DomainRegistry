@@ -50,5 +50,21 @@ describe("DomainRegistry upgrade", function () {
 
         expect(await domainRegistry.getDomainHolder(addr2Domains[0])).to.equal(addr2);
         expect(await domainRegistry.getDomainHolder(addr2Domains[1])).to.equal(addr2);
+
+        const initialOwnerAccountBalance = await ethers.provider.getBalance(owner.address);
+
+        const transaction = await domainRegistry.connect(owner).withdrawFees();
+        const transactionReceipt = await transaction.wait();
+        const gasUsed = transactionReceipt.gasUsed * transactionReceipt.gasPrice;
+
+        const ownerAccountBalanceAfterWithdraw = await ethers.provider.getBalance(owner.address)
+
+        expect(ownerAccountBalanceAfterWithdraw).to.be.equal(
+            initialOwnerAccountBalance + domainRegistryV1balance - gasUsed
+        );
+
+        const contractBalanceAfterWithdraw = await ethers.provider.getBalance(domainRegistry)
+
+        expect(contractBalanceAfterWithdraw).to.be.equal(0);
     })
 });
