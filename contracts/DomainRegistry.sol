@@ -9,6 +9,10 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 * @author Developed by Ivan Myasoyedov
 */
 contract DomainRegistry is OwnableUpgradeable {
+    // keccak256(abi.encode(uint256(keccak256("main.DomainRegistry.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant DomainRegistryStorageLocation =
+        0xb611e20da8e0f23a29d564e0e10e4725f38cca3e24b5e476e1c2af79291d8a00;
+
     /// @custom:storage-location erc7201:main.DomainRegistry.storage
     struct DomainRegistryStorage {
         /// @notice Fee required to register a domain
@@ -16,21 +20,6 @@ contract DomainRegistry is OwnableUpgradeable {
 
         /// @dev Mapping from domain name to its holder address
         mapping(string => address payable) domainToHolder;
-    }
-
-    // keccak256(abi.encode(uint256(keccak256("main.DomainRegistry.storage")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant DomainRegistryStorageLocation =
-    0xb611e20da8e0f23a29d564e0e10e4725f38cca3e24b5e476e1c2af79291d8a00;
-
-    /**
-    * @dev Retrieves the DomainRegistryStorage instance from its specified slot in storage.
-    * This function uses inline assembly to directly access storage slot.
-    * @return $ An instance of DomainRegistryStorage struct from its slot in storage
-    */
-    function _getDomainRegistryStorage() private pure returns (DomainRegistryStorage storage $) {
-        assembly {
-            $.slot := DomainRegistryStorageLocation
-        }
     }
 
     /// @notice Emitted when a new domain is registered
@@ -127,5 +116,16 @@ contract DomainRegistry is OwnableUpgradeable {
     function withdrawFees() external onlyOwner {
         (bool success, ) = payable(owner()).call{value: address(this).balance}("");
         if (!success) revert FailedToWithdrawFees();
+    }
+
+    /**
+    * @dev Retrieves the DomainRegistryStorage instance from its specified slot in storage.
+    * This function uses inline assembly to directly access storage slot.
+    * @return $ An instance of DomainRegistryStorage struct from its slot in storage
+    */
+    function _getDomainRegistryStorage() private pure returns (DomainRegistryStorage storage $) {
+        assembly {
+            $.slot := DomainRegistryStorageLocation
+        }
     }
 }
