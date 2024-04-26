@@ -12,6 +12,10 @@ import "solidity-stringutils/src/strings.sol";
 contract DomainRegistryV2 is OwnableUpgradeable {
     using strings for *;
 
+    // keccak256(abi.encode(uint256(keccak256("main.DomainRegistry.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant DomainRegistryStorageLocation =
+        0xb611e20da8e0f23a29d564e0e10e4725f38cca3e24b5e476e1c2af79291d8a00;
+
     /// @custom:storage-location erc7201:main.DomainRegistry.storage
     struct DomainRegistryStorage {
         /// @notice Fee required to register a domain
@@ -28,21 +32,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
         /// @notice Total amount of rewards for all domains
         uint256 totalDomainRewardsAmount;
-    }
-
-    // keccak256(abi.encode(uint256(keccak256("main.DomainRegistry.storage")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant DomainRegistryStorageLocation =
-        0xb611e20da8e0f23a29d564e0e10e4725f38cca3e24b5e476e1c2af79291d8a00;
-
-    /**
-    * @dev Retrieves the DomainRegistryStorage instance from its specified slot in storage.
-    * This function uses inline assembly to directly access storage slot.
-    * @return $ An instance of DomainRegistryStorage struct from its slot in storage
-    */
-    function _getDomainRegistryStorage() private pure returns (DomainRegistryStorage storage $) {
-        assembly {
-            $.slot := DomainRegistryStorageLocation
-        }
     }
 
     /// @notice Emitted when a new domain is registered
@@ -252,7 +241,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Apply rewards to the domain holder
-    function _applyRewardToParentDomainHolder(string memory _domain) internal {
+    function _applyRewardToParentDomainHolder(string memory _domain) private {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
         strings.slice memory domainNameSlice = _domain.toSlice();
@@ -278,7 +267,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Add rewards to a domain's count
-    function _applyRewardForDomain(string memory _domain) internal onlyRegisteredDomain(_domain) {
+    function _applyRewardForDomain(string memory _domain) private onlyRegisteredDomain(_domain) {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
         $.domainToReward[_domain] += $.domainHolderReward;
@@ -286,7 +275,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Reset a domain's reward after it has been withdrawn
-    function _resetRewardForDomain(string memory _domain) internal onlyRegisteredDomain(_domain) {
+    function _resetRewardForDomain(string memory _domain) private onlyRegisteredDomain(_domain) {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
         $.totalDomainRewardsAmount -= $.domainToReward[_domain];
@@ -295,7 +284,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
     /// @notice Get a domain's reward
     function _getDomainRewardBalance(string memory _domain)
-    internal
+    private
     view
     onlyRegisteredDomain(_domain)
     returns (uint256) {
@@ -303,8 +292,19 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /// @notice Transfer Ether to a given address
-    function _transferEtherTo(address payable _address, uint256 _amount) internal returns (bool) {
+    function _transferEtherTo(address payable _address, uint256 _amount) private returns (bool) {
         (bool success, ) = _address.call{value: _amount}("");
         return success;
+    }
+
+    /**
+    * @dev Retrieves the DomainRegistryStorage instance from its specified slot in storage.
+    * This function uses inline assembly to directly access storage slot.
+    * @return $ An instance of DomainRegistryStorage struct from its slot in storage
+    */
+    function _getDomainRegistryStorage() private pure returns (DomainRegistryStorage storage $) {
+        assembly {
+            $.slot := DomainRegistryStorageLocation
+        }
     }
 }
