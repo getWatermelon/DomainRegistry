@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 require('@openzeppelin/hardhat-upgrades');
+require("@nomiclabs/hardhat-solhint");
 
 const DEFAULT_MNEMONIC = "test test test test test test test test test test test junk";
 const MNEMONIC = process.env.MNEMONIC || DEFAULT_MNEMONIC;
@@ -11,7 +12,29 @@ const REPORT_GAS = process.env.REPORT_GAS || false;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.24",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
+      }
+    ],
+    allowPaths: [
+      "./node_modules/@openzeppelin",
+      "./contracts/**"
+    ]
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
+  },
   etherscan: {
     apiKey: ETHERSCAN_API_KEY
   },
