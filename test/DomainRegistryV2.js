@@ -92,66 +92,43 @@ describe("DomainRegistryV2", function () {
             await domainRegistry.connect(addr1).registerDomain("ua.com", { value: registrationFee });
             await domainRegistry.connect(addr2).registerDomain("dev.org.com", { value: registrationFee });
 
-            expect(await domainRegistry.connect(owner).getDomainRewardAmount("com")).to.be.equal(
+            expect(await domainRegistry.connect(owner).getAddressRewardAmount(owner)).to.be.equal(
                 parentDomainHolderRewardAmount * BigInt(2)
             );
-            expect(await domainRegistry.connect(owner).getDomainRewardAmount("org.com")).to.be.equal(
+            expect(await domainRegistry.connect(addr1).getAddressRewardAmount(addr1)).to.be.equal(
                 parentDomainHolderRewardAmount * BigInt(1)
             );
         });
     });
 
-    describe("withdrawRewardForDomain", function () {
-        it("Should de able to withdraw reward by owner", async function () {
-            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
-            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
-
-            expect(await domainRegistry.connect(owner).getDomainRewardAmount("com")).to.be.equal(
-                parentDomainHolderRewardAmount
-            );
-        });
-
-        it("Should de able to withdraw reward by domain holder", async function () {
-            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
-            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
-
-            expect(await domainRegistry.connect(addr1).getDomainRewardAmount("com")).to.be.equal(
-                parentDomainHolderRewardAmount
-            );
-        });
-
-        it("Should fail if not called by the owner or the domain holder", async function () {
-            await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
-            await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
-
-            await expect(domainRegistry.connect(addr2).withdrawRewardForDomain("com"))
-                .to.be.revertedWithCustomError(domainRegistry, "NotDomainHolderOrOwner");
-        });
-
+    describe("withdrawDomainHolderReward", function () {
         it("Should withdraw correct amount of ether to parent domain holder", async function () {
             await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
             await domainRegistry.connect(addr2).registerDomain("org.com", { value: registrationFee });
 
-            expect(await domainRegistry.connect(owner).getDomainRewardAmount("com")).to.be.equal(
+            expect(await domainRegistry.connect(addr1).getAddressRewardAmount(addr1)).to.be.equal(
                 parentDomainHolderRewardAmount
             );
 
-            const initialAddr1AccountBalance = await ethers.provider.getBalance(addr1.address);
+            const initialAddr1AccountBalance = await ethers.provider.getBalance(addr1);
 
-            await domainRegistry.connect(owner).withdrawRewardForDomain("com");
+            const transaction = await domainRegistry.connect(addr1).withdrawDomainHolderReward();
+            const transactionReceipt = await transaction.wait();
+            const gasUsed = transactionReceipt.gasUsed * transactionReceipt.gasPrice
 
-            const addr1AccountBalanceAfterRewardWithdraw = await ethers.provider.getBalance(addr1.address)
+
+            const addr1AccountBalanceAfterRewardWithdraw = await ethers.provider.getBalance(addr1)
 
             expect(addr1AccountBalanceAfterRewardWithdraw).to.be.equal(
-                initialAddr1AccountBalance + parentDomainHolderRewardAmount
+                initialAddr1AccountBalance + parentDomainHolderRewardAmount - gasUsed
             );
-            expect(await domainRegistry.connect(owner).getDomainRewardAmount("com")).to.be.equal(0);
+            expect(await domainRegistry.connect(addr1).getAddressRewardAmount(addr1)).to.be.equal(0);
         });
 
         it("Should fail if nothing to withdraw", async function () {
             await domainRegistry.connect(addr1).registerDomain("com", { value: registrationFee });
 
-            await expect(domainRegistry.connect(owner).withdrawRewardForDomain("com"))
+            await expect(domainRegistry.connect(addr2).withdrawDomainHolderReward())
                 .to.be.revertedWithCustomError(domainRegistry, "NothingToWithdraw");
         });
     });
@@ -205,7 +182,7 @@ describe("DomainRegistryV2", function () {
             await domainRegistry.connect(addr2).registerDomain("ua.com", { value: registrationFee });
             const totalDomainHolderRewardAmount = parentDomainHolderRewardAmount * BigInt(2);
 
-            expect(await domainRegistry.getTotalDomainRewardAmount()).to.equal(totalDomainHolderRewardAmount);
+            expect(await domainRegistry.getAddressRewardAmount(addr1)).to.equal(totalDomainHolderRewardAmount);
         });
     });
 
@@ -267,13 +244,13 @@ describe("DomainRegistryV2", function () {
             const totalRegistrationFee = registrationFee * BigInt(3);
             const totaldomainHolderRewards = parentDomainHolderRewardAmount * BigInt(2);
 
-            const initialOwnerAccountBalance = await ethers.provider.getBalance(owner.address);
+            const initialOwnerAccountBalance = await ethers.provider.getBalance(owner);
 
             const transaction = await domainRegistry.connect(owner).withdrawFees();
             const transactionReceipt = await transaction.wait();
             const gasUsed = transactionReceipt.gasUsed * transactionReceipt.gasPrice;
 
-            const ownerAccountBalanceAfterWithdraw = await ethers.provider.getBalance(owner.address)
+            const ownerAccountBalanceAfterWithdraw = await ethers.provider.getBalance(owner)
 
             expect(ownerAccountBalanceAfterWithdraw).to.be.equal(
                 initialOwnerAccountBalance + totalRegistrationFee - totaldomainHolderRewards - gasUsed
@@ -367,8 +344,8 @@ describe("DomainRegistryV2", function () {
             await domainRegistry.connect(addr2).registerDomain("ua.org.com", { value: registrationFee });
             await domainRegistry.connect(addr2).registerDomain("dev.org.com", { value: registrationFee });
 
-            await domainRegistry.connect(owner).withdrawRewardForDomain("com");
-            await domainRegistry.connect(owner).withdrawRewardForDomain("org.com");
+            await domainRegistry.connect(owner).withdrawDomainHolderReward();
+            await domainRegistry.connect(addr1).withdrawDomainHolderReward();
 
             let filter = domainRegistry.filters.DomainHolderRewarded();
 

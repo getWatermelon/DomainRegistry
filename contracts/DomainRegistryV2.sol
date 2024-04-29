@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "solidity-stringutils/src/strings.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {strings} from "solidity-stringutils/src/strings.sol";
+import {DomainHolderRewards} from "../libraries/DomainHolderRewards.sol";
 
 /**
 * @title Domain Registry Contract
@@ -11,6 +12,7 @@ import "solidity-stringutils/src/strings.sol";
 */
 contract DomainRegistryV2 is OwnableUpgradeable {
     using strings for *;
+    using DomainHolderRewards for DomainHolderRewards.RewardsStorage;
 
     // keccak256(abi.encode(uint256(keccak256("main.DomainRegistry.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DomainRegistryStorageLocation =
@@ -22,20 +24,17 @@ contract DomainRegistryV2 is OwnableUpgradeable {
         uint256 registrationFee;
 
         /// @dev Mapping from domain name to its holder address
-        mapping(string => address payable) domainToHolder;
+        mapping(string domainName => address payable holderAddress) domainToHolder;
 
         /// @notice Store the reward per domain holder
         uint256 domainHolderReward;
 
-        /// @notice Mapping from domain name to its rewards
-        mapping(string => uint256) domainToReward;
-
-        /// @notice Total amount of rewards for all domains
-        uint256 totalDomainRewardsAmount;
+        /// @notice Store the Ethereum rewards for Domain Holders
+        DomainHolderRewards.RewardsStorage ethRewardStorage;
     }
 
     /// @notice Emitted when a new domain is registered
-    event DomainRegistered(string domain, address indexed controller);
+    event DomainRegistered(string domain, address indexed domainHolder);
 
     /// @notice Emitted when the registration fee is changed
     event RegistrationFeeChanged(uint256 newRegistrationFee);
@@ -43,15 +42,14 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     /// @notice Emitted when a domain holder is rewarded
     event DomainHolderRewarded(
         string domain,
-        address indexed controller,
+        address indexed domainHolder,
         uint256 rewardValue,
         uint256 rewardBalance
     );
 
     /// @notice Emitted when a domain holder withdraws his reward
     event DomainHolderRewardWithdrawn(
-        string domain,
-        address indexed controller,
+        address indexed domainHolder,
         uint256 rewardValue
     );
 
@@ -86,7 +84,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     error NewDomainHolderRewardMustDifferFromCurrent();
 
     /// @dev Error thrown when a domain holder's withdraw reward fails
-    error WithdrawRewardFailed(string domain);
+    error WithdrawRewardFailed(address holderAddress);
 
     /// @dev Error thrown when the caller is neither the domain holder or the contract owner
     error NotDomainHolderOrOwner();
@@ -117,8 +115,9 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
     /// @notice Reinitialize the contract with new owner, registration fee and holder reward
     function reinitialize(address _owner, uint256 _registrationFee, uint256 _domainHolderReward)
-    public
-    reinitializer(2) {
+        public
+        reinitializer(2)
+    {
         if (_registrationFee <= 0) revert RegistrationFeeMustBeGreaterThanZero();
         if (_domainHolderReward <= 0) revert DomainHolderRewardMustBeGreaterThanZero();
 
@@ -151,19 +150,14 @@ contract DomainRegistryV2 is OwnableUpgradeable {
         return _getDomainRegistryStorage().domainHolderReward;
     }
 
-    /// @notice Get the total reward amount for a domain
-    function getDomainRewardAmount(string memory domainName) external view returns (uint256) {
-        return _getDomainRegistryStorage().domainToReward[domainName];
-    }
-
     /// @notice Get the total rewards amount for all domains
     function getTotalDomainRewardAmount() external view returns (uint256) {
-        return _getDomainRegistryStorage().totalDomainRewardsAmount;
+        return _getDomainRegistryStorage().ethRewardStorage.getTotalRewardAmount();
     }
 
     /**
     * @notice Registers a new top-level domain
-    * @dev Emits a `DomainRegistered` event upon success
+    * @dev Emits a DomainRegistered event upon success
     * @param _domain The domain name to register
     */
     function registerDomain(string calldata _domain) payable external availableDomain(_domain) {
@@ -181,7 +175,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
     /**
     * @notice Changes the registration fee for domain registration
-    * @dev Emits a `RegistrationFeeChanged` event upon success
+    * @dev Emits a RegistrationFeeChanged event upon success
     * @param _newFee The new fee for registering a domain
     */
     function changeRegistrationFee(uint256 _newFee) external onlyOwner {
@@ -210,34 +204,34 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     * @dev Can only be called by the contract owner
     */
     function withdrawFees() external onlyOwner {
-        uint256 feeAmountToWithdraw = address(this).balance - _getDomainRegistryStorage().totalDomainRewardsAmount;
+        uint256 feeAmountToWithdraw =
+            address(this).balance - _getDomainRegistryStorage().ethRewardStorage.getTotalRewardAmount();
         bool success = _transferEtherTo(payable(owner()), feeAmountToWithdraw);
 
         if (!success) revert FailedToWithdrawFees();
     }
 
-    /// @notice Withdraw rewards from a domain
-    function withdrawRewardForDomain(string memory _domain)
-    external
-    onlyRegisteredDomain(_domain)
-    onlyDomainHolderOrOwner(_domain) {
+    /**
+    * @notice Allows a domain holder to withdraw their accumulated rewards.
+    * @dev Emits a DomainHolderRewardWithdrawn event upon successful withdrawal.
+    */
+    function withdrawDomainHolderReward() external {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
-        address payable domainHolder = $.domainToHolder[_domain];
-        uint256 rewardBalance = _getDomainRewardBalance(_domain);
+        address domainHolder = msg.sender;
+        uint256 rewardBalance = getAddressRewardAmount(domainHolder);
 
         if (rewardBalance == 0) revert NothingToWithdraw();
 
-        _resetRewardForDomain(_domain);
+        $.ethRewardStorage.resetRewardForAddress(domainHolder);
 
         emit DomainHolderRewardWithdrawn({
-            domain: _domain,
-            controller: domainHolder,
+            domainHolder: domainHolder,
             rewardValue: $.domainHolderReward
         });
 
-        bool rewardWithdrawn = _transferEtherTo(domainHolder, rewardBalance);
-        if (!rewardWithdrawn) revert WithdrawRewardFailed(_domain);
+        bool rewardWithdrawn = _transferEtherTo(payable(domainHolder), rewardBalance);
+        if (!rewardWithdrawn) revert WithdrawRewardFailed(domainHolder);
     }
 
     /// @notice Checks whether a domain is registered
@@ -247,11 +241,25 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     }
 
     /**
+    * @notice Retrieves the reward amount for a specific domain holder.
+    * @param _holderAddress The address of the domain holder.
+    * @return The amount of reward for the provided address.
+    */
+    function getAddressRewardAmount(address _holderAddress) public view returns (uint256) {
+        return _getDomainRegistryStorage().ethRewardStorage.getAddressRewardAmount(_holderAddress);
+    }
+
+    /**
     * @notice Get the holders of a domain.
     * @param _domain The domain to retrieve the holder for.
     * @return The address of the holder of the given domain.
     */
-    function getDomainHolder(string memory _domain) public view onlyRegisteredDomain(_domain) returns (address) {
+    function getDomainHolder(string memory _domain)
+        public
+        view
+        onlyRegisteredDomain(_domain)
+        returns (address)
+    {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
         return $.domainToHolder[_domain];
     }
@@ -268,43 +276,20 @@ contract DomainRegistryV2 is OwnableUpgradeable {
             string memory parentDomainName = domainNameSlice.toString();
 
             if (isDomainRegistered(parentDomainName)) {
-                _applyRewardForDomain(parentDomainName);
+                address payable domainHolderAddress = $.domainToHolder[parentDomainName];
+
+                $.ethRewardStorage.applyRewardForAddress(domainHolderAddress, $.domainHolderReward);
 
                 emit DomainHolderRewarded({
                     domain: parentDomainName,
-                    controller: $.domainToHolder[parentDomainName],
+                    domainHolder: domainHolderAddress,
                     rewardValue: $.domainHolderReward,
-                    rewardBalance: _getDomainRewardBalance(parentDomainName)
+                    rewardBalance: getAddressRewardAmount(domainHolderAddress)
                 });
 
                 break;
             }
         }
-    }
-
-    /// @notice Add rewards to a domain's count
-    function _applyRewardForDomain(string memory _domain) private onlyRegisteredDomain(_domain) {
-        DomainRegistryStorage storage $ = _getDomainRegistryStorage();
-
-        $.domainToReward[_domain] += $.domainHolderReward;
-        $.totalDomainRewardsAmount += $.domainHolderReward;
-    }
-
-    /// @notice Reset a domain's reward after it has been withdrawn
-    function _resetRewardForDomain(string memory _domain) private onlyRegisteredDomain(_domain) {
-        DomainRegistryStorage storage $ = _getDomainRegistryStorage();
-
-        $.totalDomainRewardsAmount -= $.domainToReward[_domain];
-        $.domainToReward[_domain] = 0;
-    }
-
-    /// @notice Get a domain's reward
-    function _getDomainRewardBalance(string memory _domain)
-    private
-    view
-    onlyRegisteredDomain(_domain)
-    returns (uint256) {
-        return _getDomainRegistryStorage().domainToReward[_domain];
     }
 
     /// @notice Transfer Ether to a given address
