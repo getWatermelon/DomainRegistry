@@ -419,7 +419,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     function _convertUSDTToWEI(uint256 usdtValue) private view returns (uint256) {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
-        uint8 priceFeedDecimals = $.USDTToEHTPriceFeed.decimals();
         uint256 usdtToEthRate = _getLatestUSDTToETHPrice();
         uint256 weiAmount = usdtValue * 1e18 / usdtToEthRate;
 
