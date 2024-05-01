@@ -190,11 +190,11 @@ contract DomainRegistryV2 is OwnableUpgradeable {
 
         if ($.USDTContract.balanceOf(msg.sender) < $.registrationFee) revert NotEnoughUSDT($.registrationFee);
 
-        bool success = $.USDTContract.transferFrom(msg.sender, address(this), $.registrationFee);
-        if (!success) revert FailedToTransferUSDT(msg.sender);
-
         _registerDomain(_domain, msg.sender);
         _applyRewardToParentDomainHolder($.usdtRewardStorage, _domain, $.domainHolderReward);
+
+        bool success = $.USDTContract.transferFrom(msg.sender, address(this), $.registrationFee);
+        if (!success) revert FailedToTransferUSDT(msg.sender);
     }
 
     /**
@@ -397,8 +397,6 @@ contract DomainRegistryV2 is OwnableUpgradeable {
             if (isDomainRegistered(parentDomainName)) {
                 address payable domainHolderAddress = $.domainToHolder[parentDomainName];
 
-                _rewardsStorage.applyRewardForAddress(domainHolderAddress, _domainHolderReward);
-
                 emit DomainHolderRewarded({
                     domain: parentDomainName,
                     domainHolder: domainHolderAddress,
@@ -407,6 +405,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
                     rewardBalance: _rewardsStorage.getAddressRewardAmount(domainHolderAddress)
                 });
 
+                _rewardsStorage.applyRewardForAddress(domainHolderAddress, _domainHolderReward);
                 break;
             }
         }
