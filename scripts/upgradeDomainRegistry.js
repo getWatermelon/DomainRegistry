@@ -1,5 +1,7 @@
 const { ethers, upgrades } = require("hardhat");
 const assert = require("assert");
+const { deployMockUSDTToken } = require("../scripts/mocks/deployMockUSDTToken");
+const { deployMockV3Aggregator } = require("../scripts/mocks/deployMockV3Aggregator");
 
 const PWEI_DECIMAL_PLACES = 15;
 
@@ -12,9 +14,17 @@ async function upgrade() {
 
     const parentDomainHolderRewardAmount = ethers.parseUnits('1', PWEI_DECIMAL_PLACES)
 
+    const MockUSDTToken = await deployMockUSDTToken();
+    const MockV3Aggregator = await deployMockV3Aggregator();
+    const mockUSDTTokenContractAddress = await MockUSDTToken.getAddress();
+    const mockV3AggregatorContractAddress = await MockV3Aggregator.getAddress();
+
     const upgradedDomainRegistry = await upgrades.upgradeProxy(domainRegistryV1ContractAddress, DomainRegistryV2, {call: {
             fn: "reinitialize",
-            args: [deployer.address, registrationFeeAmount, parentDomainHolderRewardAmount],
+            args: [
+                deployer.address, registrationFeeAmount, parentDomainHolderRewardAmount,
+                mockUSDTTokenContractAddress, mockV3AggregatorContractAddress,
+            ],
         }});
 
     await upgradedDomainRegistry.waitForDeployment();

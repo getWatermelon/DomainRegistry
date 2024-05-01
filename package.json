@@ -5,7 +5,6 @@
   "scripts": {
     "hardhat:node": "hardhat node",
     "hardhat:compile": "hardhat compile",
-    "hardhat:compile": "hardhat compile",
     "hardhat:compile:force": "hardhat compile --force",
     "hardhat:test": "REPORT_GAS=true hardhat test",
     "hardhat:deploy:domainRegistry": "hardhat run scripts/deployDomainRegistry.js --network localhost",

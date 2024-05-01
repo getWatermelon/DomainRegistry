@@ -12,6 +12,11 @@ library DomainHolderRewards {
      */
     struct RewardsStorage {
         /**
+        * @notice The type of currency for rewards (e.g., "ETH", "USDT").
+        */
+        string currencyType;
+
+        /**
         * @notice A mapping that links a domain holder address to their reward amount.
         */
         mapping(address holderAddress => uint256 holderRewardAmount) addressToReward;

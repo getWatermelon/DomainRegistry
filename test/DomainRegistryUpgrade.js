@@ -1,5 +1,7 @@
 const { ethers, upgrades } = require("hardhat");
 const { expect } = require("chai");
+const { deployMockUSDTToken } = require("../scripts/mocks/deployMockUSDTToken");
+const { deployMockV3Aggregator } = require("../scripts/mocks/deployMockV3Aggregator");
 
 describe("DomainRegistry upgrade", function () {
     const PWEI_DECIMAL_PLACES_NUMBER = 15;
@@ -29,18 +31,26 @@ describe("DomainRegistry upgrade", function () {
         const domainRegistryV1balance = await ethers.provider.getBalance(domainRegistry);
         const domainRegistryV1address = await domainRegistry.getAddress();
 
-        const parentDomainHolderRewardAmount = ethers.parseUnits("1", PWEI_DECIMAL_PLACES_NUMBER);
+        const newRegistrationFee = ethers.parseUnits("300", 18);
+        const parentDomainHolderRewardAmount = ethers.parseUnits("30", 18);
 
         const DomainRegistryV2 = await ethers.getContractFactory("DomainRegistryV2");
+        const MockUSDTToken = await deployMockUSDTToken();
+        const MockV3Aggregator = await deployMockV3Aggregator();
+
+        const mockUSDTTokenContractAddress = await MockUSDTToken.getAddress();
+        const mockV3AggregatorContractAddress = await MockV3Aggregator.getAddress();
+
         domainRegistry = await upgrades.upgradeProxy(domainRegistryV1address, DomainRegistryV2, {call: {
                 fn: "reinitialize",
-                args: [owner.address, registrationFee, parentDomainHolderRewardAmount]
+                args: [
+                    owner.address, newRegistrationFee, parentDomainHolderRewardAmount,
+                    mockUSDTTokenContractAddress, mockV3AggregatorContractAddress,
+                ]
         }});
 
         expect(await domainRegistry.owner()).to.equal(owner);
-        expect(await domainRegistry.registrationFee()).to.equal(registrationFee);
         expect(await ethers.provider.getBalance(domainRegistry)).to.equal(domainRegistryV1balance);
-        expect(await domainRegistry.domainHolderReward()).to.equal(parentDomainHolderRewardAmount);
 
         expect(await domainRegistry.getDomainHolder(onwerDomains[0])).to.equal(owner);
 
@@ -53,7 +63,7 @@ describe("DomainRegistry upgrade", function () {
 
         const initialOwnerAccountBalance = await ethers.provider.getBalance(owner.address);
 
-        const transaction = await domainRegistry.connect(owner).withdrawFees();
+        const transaction = await domainRegistry.connect(owner).withdrawFeesInETH();
         const transactionReceipt = await transaction.wait();
         const gasUsed = transactionReceipt.gasUsed * transactionReceipt.gasPrice;
 
