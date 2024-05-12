@@ -1,5 +1,4 @@
 const { ethers, upgrades } = require("hardhat");
-const { expect } = require("chai");
 const { deployMockUSDTToken } = require("../scripts/mocks/deployMockUSDTToken");
 const { deployMockV3Aggregator } = require("../scripts/mocks/deployMockV3Aggregator");
 
@@ -9,7 +8,9 @@ async function deploy() {
     const parentDomainHolderRewardAmount = ethers.parseUnits("30", decimals); // 30 USDT
 
     const DomainRegistry = await ethers.getContractFactory("DomainRegistryV2");
-    const [owner, addr1, addr2] = await ethers.getSigners();
+    const [owner,] = await ethers.getSigners();
+
+    console.log("Deploy contract with address: ", owner.address)
 
     const MockUSDTToken = await deployMockUSDTToken();
     const MockV3Aggregator = await deployMockV3Aggregator();
@@ -24,8 +25,10 @@ async function deploy() {
         {initializer: "reinitialize"}
     );
 
+    await domainRegistry.waitForDeployment();
+
     const domainRegistryAddress = await domainRegistry.getAddress();
-    console.log("DomainRegistryV2 deployed with address:", domainRegistryAddress);
+    console.log("DomainRegistryV2 deployed with address: ", domainRegistryAddress);
 }
 
 deploy()

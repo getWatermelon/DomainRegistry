@@ -145,27 +145,18 @@ contract DomainRegistryV2 is OwnableUpgradeable {
         if (_registrationFee <= 0) revert RegistrationFeeMustBeGreaterThanZero();
         if (_domainHolderReward <= 0) revert DomainHolderRewardMustBeGreaterThanZero();
 
+        DomainRegistryStorage storage $ = _getDomainRegistryStorage();
+
         __Ownable_init(_owner);
-        _getDomainRegistryStorage().registrationFee = _registrationFee;
-        _getDomainRegistryStorage().domainHolderReward = _domainHolderReward;
+        $.registrationFee = _registrationFee;
+        $.domainHolderReward = _domainHolderReward;
 
-        _getDomainRegistryStorage().USDTContract = ERC20(_usdtContractAddress);
-        _getDomainRegistryStorage().USDTToEHTPriceFeed = AggregatorV3Interface(_USDTToETHPriceFeedContractAddress);
+        $.USDTContract = ERC20(_usdtContractAddress);
+        $.USDTToEHTPriceFeed = AggregatorV3Interface(_USDTToETHPriceFeedContractAddress);
 
-        _getDomainRegistryStorage().ethRewardStorage.currencyType = "ETH";
-        _getDomainRegistryStorage().usdtRewardStorage.currencyType = "USDT";
+        $.ethRewardStorage.currencyType = "ETH";
+        $.usdtRewardStorage.currencyType = "USDT";
     }
-
-    /**
-    * @notice This function is triggered when the contract receives plain Ether (without data)
-    */
-    receive() external payable { }
-
-    /**
-    * @notice This function is triggered when the call data is not empty
-    * or when the function that is supposed to receive Ether or data does not exist
-    */
-    fallback() external payable { }
 
     /**
     * @notice Retrieves the fee required to register a domain
@@ -419,9 +410,13 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     function _convertUSDTToWEI(uint256 usdtValue) private view returns (uint256) {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
 
-        uint256 usdtToEthRate = _getLatestUSDTToETHPrice();
-        uint256 weiAmount = usdtValue * 1e18 / usdtToEthRate;
+        uint8 usdtDecimals = $.USDTContract.decimals();
+        uint8 ethUsdDecimals = $.USDTToEHTPriceFeed.decimals();
 
+        uint256 usdtToEthRate = _getLatestUSDTToETHPrice();
+        uint256 normalizedEthPrice = uint256(usdtToEthRate) * (10 ** usdtDecimals) / (10 ** ethUsdDecimals);
+
+        uint256 weiAmount = usdtValue * 1e18 / normalizedEthPrice;
         return weiAmount;
     }
 
@@ -431,9 +426,7 @@ contract DomainRegistryV2 is OwnableUpgradeable {
     */
     function _getLatestUSDTToETHPrice() private view returns (uint256) {
         DomainRegistryStorage storage $ = _getDomainRegistryStorage();
-
         (, int256 price, , ,) = $.USDTToEHTPriceFeed.latestRoundData();
-        uint8 decimals = $.USDTToEHTPriceFeed.decimals();
 
         return uint256(price);
     }

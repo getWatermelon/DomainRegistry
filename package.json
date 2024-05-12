@@ -7,8 +7,10 @@
     "hardhat:compile": "hardhat compile",
     "hardhat:compile:force": "hardhat compile --force",
     "hardhat:test": "REPORT_GAS=true hardhat test",
-    "hardhat:deploy:domainRegistry": "hardhat run scripts/deployDomainRegistry.js --network localhost",
-    "hardhat:test:domainRegistry": "REPORT_GAS=true hardhat test test/DomainRegistry.js"
+    "hardhat:deploy:domainRegistry": "hardhat run scripts/deployLocalDomainRegistry.js --network localhost",
+    "hardhat:test:domainRegistry": "REPORT_GAS=true hardhat test test/DomainRegistry.js",
+    "hardhat:deploy:domainRegistryV2:local": "hardhat run scripts/deployLocalDomainRegistryV2.js --network localhost",
+    "hardhat:deploy:domainRegistryV2:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'METAMASK_MNEMONIC_SEED_DEV') INFURA_API_KEY=$(security find-generic-password -w -s 'INFURA_API_KEY_DEV') hardhat run scripts/deploySepoliaDomainRegistryV2.js --network sepolia"
   },
   "keywords": [],
   "license": "ISC",

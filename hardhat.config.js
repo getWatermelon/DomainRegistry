@@ -62,7 +62,7 @@ module.exports = {
       // accounts: [PRIVATE_KEY]
       accounts: {
         mnemonic: MNEMONIC,
-        path: "m/44'/60'/0'/0/0"
+        // path: "m/44'/60'/0'/0/0"
       }
     }
   }
